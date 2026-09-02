@@ -267,8 +267,8 @@ jobs:
       - name: Wait for backend
         
         run: |
-          kubectl rollout status `
-            deployment/mini-todo-release-backend `
+          kubectl rollout status \
+            deployment/mini-todo-release-backend \
             --timeout=180s
 
 
@@ -279,8 +279,8 @@ jobs:
       - name: Wait for frontend
         
         run: |
-          kubectl rollout status `
-            deployment/mini-todo-release-frontend `
+          kubectl rollout status \
+            deployment/mini-todo-release-frontend \
             --timeout=180s
 
 
