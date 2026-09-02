@@ -4,7 +4,7 @@ frontend:
   image:
     repository: mini-todo-frontend
     tag: "1.0"
-    pullPolicy: Never
+    pullPolicy: IfNotPresent
 
   service:
     type: NodePort
@@ -18,7 +18,7 @@ backend:
   image:
     repository: mini-todo-backend
     tag: "1.0"
-    pullPolicy: Never
+    pullPolicy: IfNotPresent
 
   service:
     type: ClusterIP
