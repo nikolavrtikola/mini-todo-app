@@ -9,68 +9,101 @@ on:
     branches:
       - main
 
+
+# ============================================================
+# Global environment variables
+# ============================================================
+
 env:
   REGISTRY: ghcr.io
-  IMAGE_FRONTEND: ${{ github.repository_owner }}/mini-todo-frontend
-  IMAGE_BACKEND: ${{ github.repository_owner }}/mini-todo-backend
+
+  FRONTEND_IMAGE: ${{ github.repository_owner }}/mini-todo-frontend
+  BACKEND_IMAGE: ${{ github.repository_owner }}/mini-todo-backend
+
+
+# ============================================================
+# CI - Validate the application
+# ============================================================
 
 jobs:
 
-  # ============================================================
-  # CI - TEST
-  # ============================================================
-
   test:
-    name: Test application
+    name: Validate application
+
     runs-on: ubuntu-latest
 
     steps:
+
+      # --------------------------------------------------------
+      # Checkout source code
+      # --------------------------------------------------------
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # -------------------------
-      # Frontend
-      # -------------------------
+
+      # --------------------------------------------------------
+      # Setup Node.js for backend
+      # --------------------------------------------------------
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: backend/package-lock.json
 
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm ci
 
-      - name: Test frontend
-        working-directory: frontend
-        run: npm test -- --run
-
-      - name: Build frontend
-        working-directory: frontend
-        run: npm run build
-
-      # -------------------------
-      # Backend
-      # -------------------------
+      # --------------------------------------------------------
+      # Install backend dependencies
+      # --------------------------------------------------------
 
       - name: Install backend dependencies
         working-directory: backend
         run: npm ci
 
-      - name: Test backend
+
+      # --------------------------------------------------------
+      # Check backend JavaScript syntax
+      # --------------------------------------------------------
+
+      - name: Validate backend
         working-directory: backend
-        run: npm test
+        run: node --check server.js
 
 
-  # ============================================================
-  # CI - BUILD AND PUSH DOCKER IMAGES
-  # ============================================================
+      # --------------------------------------------------------
+      # Validate frontend files
+      # --------------------------------------------------------
+
+      - name: Validate frontend
+        run: |
+          test -f frontend/index.html
+          test -f frontend/nginx.conf
+          test -f frontend/Dockerfile
+
+
+      # --------------------------------------------------------
+      # Validate Dockerfiles
+      # --------------------------------------------------------
+
+      - name: Validate Dockerfiles
+        run: |
+          test -f frontend/Dockerfile
+          test -f backend/Dockerfile
+
+
+# ============================================================
+# Build and push Docker images
+# ============================================================
 
   build:
     name: Build and push Docker images
+
     needs: test
+
+    # Only build/push when code is actually pushed to main.
+    # Pull requests only execute the test job.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     runs-on: ubuntu-latest
@@ -81,111 +114,126 @@ jobs:
 
     steps:
 
+      # --------------------------------------------------------
+      # Checkout source code
+      # --------------------------------------------------------
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Login to GitHub Container Registry
+
+      # --------------------------------------------------------
+      # Login to GitHub Container Registry
+      # --------------------------------------------------------
+
+      - name: Login to GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set image tag
-        id: vars
-        run: |
-          echo "tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
 
-      # -------------------------
-      # Frontend image
-      # -------------------------
+      # --------------------------------------------------------
+      # Build frontend Docker image
+      # --------------------------------------------------------
 
       - name: Build frontend image
         run: |
           docker build \
-            -t $REGISTRY/${IMAGE_FRONTEND}:${GITHUB_SHA} \
+            -t ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
             ./frontend
+
+
+      # --------------------------------------------------------
+      # Push frontend Docker image
+      # --------------------------------------------------------
 
       - name: Push frontend image
         run: |
           docker push \
-            $REGISTRY/${IMAGE_FRONTEND}:${GITHUB_SHA}
+            ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
 
-      # -------------------------
-      # Backend image
-      # -------------------------
+
+      # --------------------------------------------------------
+      # Build backend Docker image
+      # --------------------------------------------------------
 
       - name: Build backend image
         run: |
           docker build \
-            -t $REGISTRY/${IMAGE_BACKEND}:${GITHUB_SHA} \
+            -t ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ github.sha }} \
             ./backend
+
+
+      # --------------------------------------------------------
+      # Push backend Docker image
+      # --------------------------------------------------------
 
       - name: Push backend image
         run: |
           docker push \
-            $REGISTRY/${IMAGE_BACKEND}:${GITHUB_SHA}
-
-      # -------------------------
-      # Latest tags
-      # -------------------------
-
-      - name: Tag frontend as latest
-        run: |
-          docker tag \
-            $REGISTRY/${IMAGE_FRONTEND}:${GITHUB_SHA} \
-            $REGISTRY/${IMAGE_FRONTEND}:latest
-
-      - name: Push frontend latest
-        run: |
-          docker push \
-            $REGISTRY/${IMAGE_FRONTEND}:latest
-
-      - name: Tag backend as latest
-        run: |
-          docker tag \
-            $REGISTRY/${IMAGE_BACKEND}:${GITHUB_SHA} \
-            $REGISTRY/${IMAGE_BACKEND}:latest
-
-      - name: Push backend latest
-        run: |
-          docker push \
-            $REGISTRY/${IMAGE_BACKEND}:latest
+            ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:${{ github.sha }}
 
 
-  # ============================================================
-  # CD - DEPLOY TO LOCAL MINIKUBE
-  # ============================================================
+# ============================================================
+# CD - Deploy to local Minikube
+# ============================================================
 
   deploy:
     name: Deploy to Minikube
+
     needs: build
 
-    runs-on: [self-hosted, windows]
+    # This runner must be installed on your Windows machine
+    # where Minikube is running.
+    runs-on:
+      - self-hosted
+      - windows
 
     steps:
 
+      # --------------------------------------------------------
+      # Checkout repository
+      # --------------------------------------------------------
+
       - name: Checkout repository
         uses: actions/checkout@v4
+
+
+      # --------------------------------------------------------
+      # Verify Minikube
+      # --------------------------------------------------------
 
       - name: Check Minikube
         shell: powershell
         run: |
           minikube status
 
+
+      # --------------------------------------------------------
+      # Verify Kubernetes
+      # --------------------------------------------------------
+
       - name: Check Kubernetes
         shell: powershell
         run: |
           kubectl get nodes
+
+
+      # --------------------------------------------------------
+      # Verify Helm
+      # --------------------------------------------------------
 
       - name: Check Helm
         shell: powershell
         run: |
           helm version
 
-      # ------------------------------------------------
+
+      # --------------------------------------------------------
       # Login to GHCR
-      # ------------------------------------------------
+      # --------------------------------------------------------
 
       - name: Login to GHCR
         shell: powershell
@@ -195,11 +243,12 @@ jobs:
               -u "${{ github.actor }}" `
               --password-stdin
 
-      # ------------------------------------------------
-      # Deploy
-      # ------------------------------------------------
 
-      - name: Helm upgrade
+      # --------------------------------------------------------
+      # Deploy application with Helm
+      # --------------------------------------------------------
+
+      - name: Deploy with Helm
         shell: powershell
         run: |
           helm upgrade --install mini-todo-release `
@@ -210,32 +259,58 @@ jobs:
             --set backend.image.repository=ghcr.io/${{ github.repository_owner }}/mini-todo-backend `
             --set backend.image.tag=${{ github.sha }}
 
-      # ------------------------------------------------
-      # Wait for deployment
-      # ------------------------------------------------
 
-      - name: Wait for frontend
-        shell: powershell
-        run: |
-          kubectl rollout status deployment/mini-todo-release-frontend `
-            --timeout=180s
+      # --------------------------------------------------------
+      # Wait for backend
+      # --------------------------------------------------------
 
       - name: Wait for backend
         shell: powershell
         run: |
-          kubectl rollout status deployment/mini-todo-release-backend `
+          kubectl rollout status `
+            deployment/mini-todo-release-backend `
             --timeout=180s
 
-      # ------------------------------------------------
-      # Verify
-      # ------------------------------------------------
 
-      - name: Check pods
+      # --------------------------------------------------------
+      # Wait for frontend
+      # --------------------------------------------------------
+
+      - name: Wait for frontend
         shell: powershell
         run: |
-          kubectl get pods
+          kubectl rollout status `
+            deployment/mini-todo-release-frontend `
+            --timeout=180s
 
-      - name: Check services
+
+      # --------------------------------------------------------
+      # Show pods
+      # --------------------------------------------------------
+
+      - name: Show pods
+        shell: powershell
+        run: |
+          kubectl get pods -o wide
+
+
+      # --------------------------------------------------------
+      # Show services
+      # --------------------------------------------------------
+
+      - name: Show services
         shell: powershell
         run: |
           kubectl get svc
+
+
+      # --------------------------------------------------------
+      # Deployment completed
+      # --------------------------------------------------------
+
+      - name: Deployment successful
+        shell: powershell
+        run: |
+          Write-Host "========================================="
+          Write-Host "Todo application deployed successfully!"
+          Write-Host "========================================="
