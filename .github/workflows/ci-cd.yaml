@@ -189,7 +189,7 @@ jobs:
     # where Minikube is running.
     runs-on:
       - self-hosted
-      - windows
+      - linux
 
     steps:
 
