@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: {{ .Release.Name }}-backend
+
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-backend
+
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-backend
+
+    spec:
+      containers:
+
+        - name: backend
+
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+
+          ports:
+            - containerPort: 3000
+
+          env:
+
+            - name: DB_HOST
+              value: {{ .Release.Name }}-postgres
+
+            - name: DB_PORT
+              value: "5432"
+
+            - name: DB_USER
+              value: {{ .Values.postgres.database.user | quote }}
+
+            - name: DB_PASSWORD
+              value: {{ .Values.postgres.database.password | quote }}
+
+            - name: DB_NAME
+              value: {{ .Values.postgres.database.name | quote }}
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+
+            initialDelaySeconds: 10
+            periodSeconds: 20
