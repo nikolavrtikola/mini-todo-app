@@ -308,8 +308,7 @@ jobs:
       # --------------------------------------------------------
 
       - name: Deployment successful
-        
         run: |
-          Write-Host "========================================="
-          Write-Host "Todo application deployed successfully!"
-          Write-Host "========================================="
+          echo "========================================="
+          echo "Todo application deployed successfully!"
+          echo "========================================="
