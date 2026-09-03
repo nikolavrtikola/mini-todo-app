@@ -25,6 +25,20 @@ backend:
     port: 3000
 
 
+# postgres:
+#   image:
+#     repository: postgres
+#     tag: "16"
+#     pullPolicy: IfNotPresent
+
+#   service:
+#     port: 5432
+
+#   database:
+#     name: todo
+#     user: postgres
+#     password: postgres
+
 postgres:
   image:
     repository: postgres
@@ -37,4 +51,4 @@ postgres:
   database:
     name: todo
     user: postgres
-    password: postgres
+    existingSecret: mini-todo-postgres-secret

@@ -8,11 +8,19 @@ app.use(express.json());
 
 const PORT = 3000;
 
+const requiredEnv = ["DB_HOST", "DB_USER", "DB_PASSWORD"];
+
+for (const name of requiredEnv) {
+  if (!process.env[name]) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+}
+
 const pool = new Pool({
-  host: process.env.DB_HOST || "localhost",
-  port: process.env.DB_PORT || 5432,
-  user: process.env.DB_USER || "postgres",
-  password: process.env.DB_PASSWORD || "postgres",
+  host: process.env.DB_HOST,
+  port: Number(process.env.DB_PORT || 5432) ,
+  user: process.env.DB_USER ,
+  password: process.env.DB_PASSWORD ,
   database: process.env.DB_NAME || "todo"
 });
 

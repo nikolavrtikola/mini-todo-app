@@ -37,3 +37,5 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/
+#Postgres Database Config
+k8s-secrets/
