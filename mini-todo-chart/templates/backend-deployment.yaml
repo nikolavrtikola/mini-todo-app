@@ -18,7 +18,6 @@ spec:
 
     spec:
       containers:
-
         - name: backend
 
           image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
@@ -28,40 +27,38 @@ spec:
           ports:
             - containerPort: 3000
 
-  env:
-  - name: DB_HOST
-    value: mini-todo-release-postgres
+          env:
+            - name: DB_HOST
+              value: mini-todo-release-postgres
 
-  - name: DB_PORT
-    value: "5432"
+            - name: DB_PORT
+              value: "5432"
 
-  - name: DB_NAME
-    value: {{ .Values.postgres.database.name | quote }}
+            - name: DB_NAME
+              value: {{ .Values.postgres.database.name | quote }}
 
-  - name: DB_USER
-    valueFrom:
-      secretKeyRef:
-        name: {{ .Values.postgres.database.existingSecret }}
-        key: POSTGRES_USER
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.database.existingSecret }}
+                  key: POSTGRES_USER
 
-  - name: DB_PASSWORD
-    valueFrom:
-      secretKeyRef:
-        name: {{ .Values.postgres.database.existingSecret }}
-        key: POSTGRES_PASSWORD
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgres.database.existingSecret }}
+                  key: POSTGRES_PASSWORD
 
-        readinessProbe:
+          readinessProbe:
             httpGet:
               path: /health
               port: 3000
-
             initialDelaySeconds: 5
             periodSeconds: 10
 
-        livenessProbe:
+          livenessProbe:
             httpGet:
               path: /health
               port: 3000
-
             initialDelaySeconds: 10
             periodSeconds: 20
