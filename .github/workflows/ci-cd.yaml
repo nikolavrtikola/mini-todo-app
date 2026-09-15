@@ -218,6 +218,25 @@ jobs:
       - name: Check Kubernetes
         
         run: |
+          echo "User:"
+          whoami
+
+          echo "Home:"
+          echo "$HOME"
+
+          echo "Docker:"
+          docker --version
+
+          echo "Minikube:"
+          minikube status
+
+          echo "kubectl:"
+          kubectl version --client
+
+          echo "Kubernetes context:"
+          kubectl config current-context
+
+          echo "Kubernetes nodes:"
           kubectl get nodes
 
 
